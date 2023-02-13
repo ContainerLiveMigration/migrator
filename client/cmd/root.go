@@ -10,6 +10,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	localhost = "127.0.0.1"
+)
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "migrate",
@@ -33,7 +37,7 @@ var rootCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		log.Printf("migrating instance %s to %s", instanceName, targetIP)
-		client, err := rpc.DialHTTP("tcp", targetIP+ migrator.Port)
+		client, err := rpc.DialHTTP("tcp", localhost+ migrator.Port)
 		if err != nil {
 			log.Printf("dial http failed: %v", err)
 			os.Exit(1)
