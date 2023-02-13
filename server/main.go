@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"net/rpc"
-
 )
 
 func init() {

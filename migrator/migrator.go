@@ -18,14 +18,13 @@ func (m *Migrator) Migrate(req *MigrateRequest, res *MigrateResponse) error {
 		log.Printf("failed to dump instance %s: %v", req.InstanceName, err)
 	}
 
-
 	instance, err := getContainerStatus(req.UserName, req.InstanceName)
 	if err != nil {
 		log.Printf("failed to get checkpoint name of instance %s: %v", req.InstanceName, err)
 		res.Status = FAIL
 		return err
 	}
-	
+
 	// 2. stop the container
 	cmd = exec.Command(
 		"apptainer",

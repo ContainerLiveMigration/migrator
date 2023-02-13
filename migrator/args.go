@@ -22,9 +22,9 @@ type MigrateResponse struct {
 }
 
 type DisklessMigrateRequest struct {
-	UserName       string
-	InstanceName   string
-	Target         string
+	UserName     string
+	InstanceName string
+	Target       string
 }
 
 type DisklessMigrateResponse struct {

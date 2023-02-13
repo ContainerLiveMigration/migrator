@@ -1,8 +1,8 @@
 package main
 
 import (
-	"log"
 	"cr/client/cmd"
+	"log"
 )
 
 func init() {
