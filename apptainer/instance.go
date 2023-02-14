@@ -160,8 +160,8 @@ func List(username string, name string, subDir string) ([]*File, error) {
 	return list, nil
 }
 
-// Get returns the instance file corresponding to instance name
-func Get(userName string, instanceName string, subDir string) (*File, error) {
+// GetInstance returns the instance file corresponding to instance name
+func GetInstance(userName string, instanceName string, subDir string) (*File, error) {
 	list, err := List(userName, instanceName, subDir)
 	if err != nil {
 		return nil, err
@@ -170,4 +170,13 @@ func Get(userName string, instanceName string, subDir string) (*File, error) {
 		return nil, fmt.Errorf("no instance found with name %s", instanceName)
 	}
 	return list[0], nil
+}
+
+func GetCheckpointDir(userName string, checkpointName string) (string, error) {
+	u, err := user.Lookup(userName)
+	if err != nil {
+		log.Printf("failed to lookup user %s: %s", userName, err)
+		return "", err
+	}
+	return filepath.Join(u.HomeDir, apptainerDir, "checkpoint", "criu", checkpointName), nil
 }

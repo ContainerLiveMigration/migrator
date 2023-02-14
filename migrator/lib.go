@@ -53,13 +53,8 @@ func executeAsUser(cmd *exec.Cmd, user string) error {
 	return cmd.Run()
 }
 
-func apptainerRestore(instanceName string, userName string) error {
-	cmd := exec.Command("apptainer", "checkpoint", "instance", "--criu", "--restore", instanceName)
-	return executeAsUser(cmd, userName)
-}
-
 func getContainerStatus(userName string, instanceName string) (*apptainer.File, error) {
-	file, err := apptainer.Get(userName, instanceName, apptainer.AppSubDir)
+	file, err := apptainer.GetInstance(userName, instanceName, apptainer.AppSubDir)
 	if err != nil {
 		log.Printf("failed to get instance %s: %v", instanceName, err)
 		return nil, err
