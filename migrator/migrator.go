@@ -91,7 +91,7 @@ func (m *Migrator) DisklessMigrate(req *DisklessMigrateRequest, res *DisklessMig
 		res.Status = FAIL
 		return err
 	}
-	checkpointDir, err := apptainer.GetCheckpointDir(req.UserName, req.InstanceName)
+	checkpointDir, err := apptainer.GetCheckpointDir(req.UserName, instance.Checkpoint)
 	if err != nil {
 		log.Printf("failed to get checkpoint dir of instance %s: %v", req.InstanceName, err)
 		res.Status = FAIL
