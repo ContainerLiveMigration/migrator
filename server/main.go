@@ -2,9 +2,10 @@ package main
 
 import (
 	"cr/migrator"
+	"cr/server/file"
+	"cr/server/rpc"
 	"log"
-	"net/http"
-	"net/rpc"
+	"sync"
 )
 
 func init() {
@@ -12,15 +13,14 @@ func init() {
 }
 
 func main() {
+	var wg sync.WaitGroup
+	wg.Add(2)
+	// launch a rpc server
+	go rpc.LaunchServer(migrator.RPCPort, &wg)
+	log.Printf("rpc server launched on port %s", migrator.RPCPort)
+	// launch a file receive server
+	go file.LaunchFileReceiveServer(migrator.FilePort, &wg)
+	log.Printf("file receive server launched on port %s", migrator.FilePort)
 
-	// launch a rpc server, serves on port 1234
-	m := new(migrator.Migrator)
-	rpc.Register(m)
-	rpc.HandleHTTP()
-
-	err := http.ListenAndServe(migrator.Port, nil)
-	if err != nil {
-		log.Fatal("ListenAndServe: ", err)
-	}
-
+	wg.Wait()
 }

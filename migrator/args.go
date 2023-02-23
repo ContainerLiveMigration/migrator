@@ -8,7 +8,8 @@ const (
 )
 
 const (
-	Port = ":1234"
+	RPCPort  = ":1234"
+	FilePort = ":1235"
 )
 
 type MigrateRequest struct {

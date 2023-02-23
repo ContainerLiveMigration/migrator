@@ -37,7 +37,7 @@ var rootCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		log.Printf("migrating instance %s to %s", instanceName, targetIP)
-		client, err := rpc.DialHTTP("tcp", localhost+migrator.Port)
+		client, err := rpc.DialHTTP("tcp", localhost+migrator.RPCPort)
 		if err != nil {
 			log.Printf("dial http failed: %v", err)
 			os.Exit(1)

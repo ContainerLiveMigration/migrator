@@ -1,25 +1,35 @@
-package migrator
+package util
 
 import (
 	"fmt"
+	"io"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"os/user"
 	"strconv"
 	"syscall"
-
-	"cr/apptainer"
 )
 
-// mountTmpfs mounts a tmpfs at the given path
-func mountTmpfs(path string) error {
+// MountTmpfs mounts a tmpfs at the given path
+func MountTmpfs(path string) error {
 	return syscall.Mount("none", path, "tmpfs", 0, "")
 }
 
-// unmountTmpfs unmounts the tmpfs at the given path
-func unmountTmpfs(path string) error {
+// UnmountTmpfs unmounts the tmpfs at the given path
+func UnmountTmpfs(path string) error {
 	return syscall.Unmount(path, 0)
+}
+
+// CreateSymLink creates a symbolic link at the given path
+func CreateSymLink(oldname, newname string) error {
+	// first remove the new name
+	err := os.RemoveAll(newname)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return os.Symlink(oldname, newname)
 }
 
 // get user id of the given user name
@@ -40,7 +50,7 @@ func getUIDAndGID(name string) (int64, int64, error) {
 }
 
 // execute command as another user
-func executeAsUser(cmd *exec.Cmd, user string) error {
+func RunCmdAsUser(cmd *exec.Cmd, user string) error {
 	uid, gid, err := getUIDAndGID(user)
 	if err != nil {
 		return err
@@ -53,16 +63,24 @@ func executeAsUser(cmd *exec.Cmd, user string) error {
 	return cmd.Run()
 }
 
-func apptainerRestore(instanceName string, userName string) error {
-	cmd := exec.Command("apptainer", "checkpoint", "instance", "--criu", "--restore", instanceName)
-	return executeAsUser(cmd, userName)
+func SendFile(conn net.Conn, filepath string) error {
+	file, err := os.Open(filepath)
+	if err != nil {
+		log.Printf("open file %s failed: %v", filepath, err)
+		return err
+	}
+	defer file.Close()
+	_, err = io.Copy(conn, file)
+	return err
 }
 
-func getContainerStatus(userName string, instanceName string) (*apptainer.File, error) {
-	file, err := apptainer.Get(userName, instanceName, apptainer.AppSubDir)
+func ReceiveFile(conn net.Conn, filepath string) error {
+	file, err := os.Create(filepath)
 	if err != nil {
-		log.Printf("failed to get instance %s: %v", instanceName, err)
-		return nil, err
+		log.Printf("create file %v failed: %v", filepath, err)
+		return err
 	}
-	return file, nil
+	defer file.Close()
+	_, err = io.Copy(file, conn)
+	return err
 }
