@@ -2,9 +2,9 @@ package main
 
 import (
 	"cr/migrator"
+	"cr/server/file"
+	"cr/server/rpc"
 	"log"
-	"net/http"
-	"net/rpc"
 )
 
 func init() {
@@ -12,15 +12,9 @@ func init() {
 }
 
 func main() {
+	// launch a rpc server
+	rpc.LaunchServer(migrator.RPCPort)
 
-	// launch a rpc server, serves on port 1234
-	m := new(migrator.Migrator)
-	rpc.Register(m)
-	rpc.HandleHTTP()
-
-	err := http.ListenAndServe(migrator.Port, nil)
-	if err != nil {
-		log.Fatal("ListenAndServe: ", err)
-	}
-
+	// launch a file receive server
+	file.LaunchFileReceiveServer(migrator.FilePort)
 }
