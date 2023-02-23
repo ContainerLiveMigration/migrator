@@ -3,7 +3,6 @@ package file
 import (
 	"cr/util"
 	"encoding/binary"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -67,7 +66,7 @@ func handleConnection(conn net.Conn) {
 	fileName := filePath[len(fileDir)+1:]
 	cmd := exec.Command("tar", "-zvxf", fileName)
 	cmd.Dir = fileDir
-	fmt.Printf("untar file %s to %s", filePath, fileDir)
+	log.Printf("untar file %s to %s", filePath, fileDir)
 	err = cmd.Run()
 	if err != nil {
 		log.Printf("failed to untar file: %v", err)
