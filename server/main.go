@@ -5,6 +5,7 @@ import (
 	"cr/server/file"
 	"cr/server/rpc"
 	"log"
+	"sync"
 )
 
 func init() {
@@ -12,9 +13,14 @@ func init() {
 }
 
 func main() {
+	var wg sync.WaitGroup
+	wg.Add(2)
 	// launch a rpc server
-	rpc.LaunchServer(migrator.RPCPort)
-
+	go rpc.LaunchServer(migrator.RPCPort, &wg)
+	log.Printf("rpc server launched on port %s", migrator.RPCPort)
 	// launch a file receive server
-	file.LaunchFileReceiveServer(migrator.FilePort)
+	go file.LaunchFileReceiveServer(migrator.FilePort, &wg)
+	log.Printf("file receive server launched on port %s", migrator.FilePort)
+
+	wg.Wait()
 }

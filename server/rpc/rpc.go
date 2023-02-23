@@ -5,9 +5,10 @@ import (
 	"log"
 	"net/http"
 	"net/rpc"
+	"sync"
 )
 
-func LaunchServer(port string) {
+func LaunchServer(port string, wg *sync.WaitGroup) {
 	// launch a rpc server, serves on port 1234
 	m := new(migrator.Migrator)
 	err := rpc.Register(m)
@@ -20,4 +21,5 @@ func LaunchServer(port string) {
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
+	wg.Done()
 }

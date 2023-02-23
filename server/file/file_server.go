@@ -9,9 +9,10 @@ import (
 	"net"
 	"os/exec"
 	"path/filepath"
+	"sync"
 )
 
-func LaunchFileReceiveServer(port string) {
+func LaunchFileReceiveServer(port string, wg *sync.WaitGroup) {
 	// launch a file receive server
 	listener, err := net.Listen("tcp", port)
 	if err != nil {
@@ -26,6 +27,7 @@ func LaunchFileReceiveServer(port string) {
 		}
 		go handleConnection(conn)
 	}
+	wg.Done()
 }
 
 func handleConnection(conn net.Conn) {
