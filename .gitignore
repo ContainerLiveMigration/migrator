@@ -22,8 +22,8 @@ go.work
 
 # executable files
 main
-server
-client
+./server
+./client
 
 test/
 
