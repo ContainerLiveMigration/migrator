@@ -84,3 +84,18 @@ func ReceiveFile(conn net.Conn, filepath string) error {
 	_, err = io.Copy(file, conn)
 	return err
 }
+
+func DoRsync(userName, checkpointDir, targetIP string) error {
+	cmd := exec.Command(
+		"rsync",
+		"-av",
+		checkpointDir+"/",
+		userName+"@"+targetIP+":"+checkpointDir,
+	)
+	log.Printf("do rsync at %v", checkpointDir)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	log.Printf("finish rsync at %v", checkpointDir)
+	return err
+}

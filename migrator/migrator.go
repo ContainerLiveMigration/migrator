@@ -9,11 +9,13 @@ import (
 	"log"
 	"net"
 	"net/rpc"
+	"os"
 	"os/exec"
 	"path/filepath"
 )
 
 type Migrator struct {
+	IsSharedFS bool
 }
 
 func (m *Migrator) Migrate(req *MigrateRequest, res *MigrateResponse) error {
@@ -48,13 +50,34 @@ func (m *Migrator) Migrate(req *MigrateRequest, res *MigrateResponse) error {
 		"stop",
 		req.InstanceName,
 	)
+	// don't wait for the command to finish
+	go func() {
+		err = cmd.Run()
+		if err != nil {
+			log.Printf("failed to stop instance %s: %v", req.InstanceName, err)
+		}
+	}()
 
-	// 3. request the server to restore the container
-	err = cmd.Run()
-	if err != nil {
-		log.Printf("failed to stop instance %s: %v", req.InstanceName, err)
+	// 3. if not in shared filesystem, rsync the checkpoint to the target
+	if !m.IsSharedFS {
+		// 3.1 get the checkpoint dir
+		checkpointDir, err := apptainer.GetCheckpointDir(req.UserName, instance.Checkpoint)
+		if err != nil {
+			log.Printf("failed to get checkpoint dir of instance %s: %v", req.InstanceName, err)
+			res.Status = FAIL
+			return err
+		}
+
+		// 3.2 run rsync
+		err = util.DoRsync(req.UserName, checkpointDir, req.Target)
+		if err != nil {
+			log.Printf("failed to rsync checkpoint %s to %s: %v", instance.Checkpoint, req.Target, err)
+			res.Status = FAIL
+			return err
+		}
 	}
 
+	// 3. request the server to restore the container
 	client, err := rpc.DialHTTP("tcp", req.Target+RPCPort)
 	if err != nil {
 		log.Printf("failed to connect to server: %v", err)
@@ -106,7 +129,17 @@ func (m *Migrator) DisklessMigrate(req *DisklessMigrateRequest, res *DisklessMig
 
 	log.Printf("image is stored at %v", imgDir)
 
-	// 2. request the server to launch a page server
+	// 2. if not in shared filesystem, rsync the checkpointDir to the target
+	if !m.IsSharedFS {
+		err = util.DoRsync(req.UserName, checkpointDir, req.Target)
+		if err != nil {
+			log.Printf("failed to rsync checkpoint %s to %s: %v", instance.Checkpoint, req.Target, err)
+			res.Status = FAIL
+			return err
+		}
+	}
+
+	// 3. request the dest node to launch a page server
 	client, err := rpc.DialHTTP("tcp", req.Target+RPCPort)
 	if err != nil {
 		log.Printf("failed to connect to server %v:%v: %v", req.Target, RPCPort, err)
@@ -127,7 +160,7 @@ func (m *Migrator) DisklessMigrate(req *DisklessMigrateRequest, res *DisklessMig
 	}
 	log.Printf("page server launched successfully")
 
-	// 3. dump the container, criu will send pages to the page server,
+	// 4. dump the container, criu will send pages to the page server,
 	// and store other files in the tmpfs
 	cmd := exec.Command(
 		"apptainer",
@@ -145,20 +178,32 @@ func (m *Migrator) DisklessMigrate(req *DisklessMigrateRequest, res *DisklessMig
 	}
 	log.Printf("dump container successfully")
 
-	// 4. stop the container
+	// 5. if not in sharedFS, rsync some log files to the server
+	if !m.IsSharedFS {
+		err = util.DoRsync(req.UserName, checkpointDir, req.Target)
+		if err != nil {
+			log.Printf("failed to rsync checkpoint %s to %s: %v", instance.Checkpoint, req.Target, err)
+			res.Status = FAIL
+			return err
+		}
+	}
+
+	// 6. stop the container
 	cmd = exec.Command(
 		"apptainer",
 		"instance",
 		"stop",
 		req.InstanceName,
 	)
-	err = cmd.Run()
-	if err != nil {
-		log.Printf("failed to stop instance %s: %v", req.InstanceName, err)
-	}
-	log.Printf("stop container successfully")
 
-	// 5. send other files to the server
+	go func() {
+		err = cmd.Run()
+		if err != nil {
+			log.Printf("failed to stop instance %s: %v", req.InstanceName, err)
+		}
+	}()
+
+	// 7. send other files to the server
 	err = sendImages(req.Target+FilePort, imgDir, req.UserName)
 	if err != nil {
 		log.Printf("failed to send images to server: %v", err)
@@ -167,7 +212,7 @@ func (m *Migrator) DisklessMigrate(req *DisklessMigrateRequest, res *DisklessMig
 	}
 	log.Printf("send images successfully")
 
-	// 6. request the server to restore
+	// 8. request the server to restore
 	restoreRes := RestoreResponse{}
 	err = client.Call("Migrator.Restore", &RestoreRequest{
 		UserName:     req.UserName,
@@ -255,7 +300,10 @@ func (m *Migrator) Restore(req *RestoreRequest, res *RestoreResponse) error {
 		"--restore",
 		req.InstanceName,
 	)
-	err := cmd.Run()
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Start()
+
 	if err != nil {
 		res.Status = FAIL
 		log.Printf("failed to restore instance %s: %v", req.InstanceName, err)
@@ -266,6 +314,7 @@ func (m *Migrator) Restore(req *RestoreRequest, res *RestoreResponse) error {
 	return nil
 }
 
+// TODO: maybe we can simplify transfering images by using rsync
 func sendImages(addr string, imgDir string, userName string) error {
 	// 1. connect to the server
 	client, err := net.Dial("tcp", addr)
