@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/rpc"
+	"os"
 	"os/exec"
 	"path/filepath"
 )
@@ -58,7 +59,7 @@ func (m *Migrator) Migrate(req *MigrateRequest, res *MigrateResponse) error {
 	}()
 
 	// 3. if not in shared filesystem, rsync the checkpoint to the target
-	if m.IsSharedFS {
+	if !m.IsSharedFS {
 		// 3.1 get the checkpoint dir
 		checkpointDir, err := apptainer.GetCheckpointDir(req.UserName, instance.Checkpoint)
 		if err != nil {
@@ -129,7 +130,7 @@ func (m *Migrator) DisklessMigrate(req *DisklessMigrateRequest, res *DisklessMig
 	log.Printf("image is stored at %v", imgDir)
 
 	// 2. if not in shared filesystem, rsync the checkpointDir to the target
-	if m.IsSharedFS {
+	if !m.IsSharedFS {
 		err = util.DoRsync(req.UserName, checkpointDir, req.Target)
 		if err != nil {
 			log.Printf("failed to rsync checkpoint %s to %s: %v", instance.Checkpoint, req.Target, err)
@@ -178,7 +179,7 @@ func (m *Migrator) DisklessMigrate(req *DisklessMigrateRequest, res *DisklessMig
 	log.Printf("dump container successfully")
 
 	// 5. if not in sharedFS, rsync some log files to the server
-	if m.IsSharedFS {
+	if !m.IsSharedFS {
 		err = util.DoRsync(req.UserName, checkpointDir, req.Target)
 		if err != nil {
 			log.Printf("failed to rsync checkpoint %s to %s: %v", instance.Checkpoint, req.Target, err)
@@ -299,7 +300,10 @@ func (m *Migrator) Restore(req *RestoreRequest, res *RestoreResponse) error {
 		"--restore",
 		req.InstanceName,
 	)
-	err := cmd.Run()
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Start()
+
 	if err != nil {
 		res.Status = FAIL
 		log.Printf("failed to restore instance %s: %v", req.InstanceName, err)

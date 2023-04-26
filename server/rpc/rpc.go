@@ -12,7 +12,8 @@ import (
 func LaunchServer(port string, wg *sync.WaitGroup) {
 	// launch a rpc server, serves on port 1234
 	m := new(migrator.Migrator)
-	if len(os.Args) > 2 && os.Args[1] == "--no-shared-fs" {
+	// TODO: use cmd line package to parse args
+	if len(os.Args) >= 2 && os.Args[1] == "--no-shared-fs" {
 		m.IsSharedFS = false
 	} else {
 		m.IsSharedFS = true
