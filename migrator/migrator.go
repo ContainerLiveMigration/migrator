@@ -77,7 +77,7 @@ func (m *Migrator) Migrate(req *MigrateRequest, res *MigrateResponse) error {
 		}
 	}
 
-	// 3. request the server to restore the container
+	// 4. request the server to restore the container
 	client, err := rpc.DialHTTP("tcp", req.Target+RPCPort)
 	if err != nil {
 		log.Printf("failed to connect to server: %v", err)
